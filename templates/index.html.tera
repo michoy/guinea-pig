@@ -1,0 +1,7 @@
+{% extends "base" %}
+
+{% block content %}
+{% for entry in data %}
+  {{entry.date_time}}: {{entry.humidity}} <br>
+{% endfor %}
+{% endblock content %} 

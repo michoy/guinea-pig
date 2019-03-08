@@ -1,3 +1,7 @@
+# rust and rocket
 /target
 **/*.rs.bk
 Cargo.lock
+
+# vscode
+.vscode

@@ -59,6 +59,11 @@ fn get_palm_log(conn: DbConn) -> Template  {
 #[put("/palm/<moisture>")]
 fn insert_palm_log_entry(conn: DbConn, moisture: i32) {
 
+    if moisture > 100 || moisture < 0 {
+        println!("Cannot log moisture because it is out of bounds");
+        return
+    }
+
     let new_entry = PalmLogEntry {
         log_time: Local::now().to_rfc3339(),
         moisture: moisture

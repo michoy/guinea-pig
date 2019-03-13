@@ -1,24 +1,30 @@
 #![feature(proc_macro_hygiene, decl_macro)]
 
 #[macro_use] extern crate rocket;
-extern crate rusqlite;
+#[macro_use] extern crate rocket_contrib;
+#[macro_use] extern crate diesel;
+extern crate chrono;
+
+use rocket_contrib::databases::diesel::SqliteConnection;
+use diesel::prelude::*;
+use schema::*;
+use models::*;
 
 use rocket_contrib::templates::Template;
 use serde::Serialize;
-use rusqlite::{Connection, NO_PARAMS};
+use chrono::prelude::Utc;
 
-const PATH: &str = "plant_data.db";
+pub mod schema;
+pub mod models;
+
+
+#[database("db")]
+struct PlantDbConn(SqliteConnection);
 
 
 #[derive(Serialize)]
 struct PalmContext {
-    data: Vec<MoistureEntry>
-}
-
-#[derive(Serialize)]
-struct MoistureEntry {  
-    date_time: String,
-    humidity: u8  
+    data: Vec<models::PalmLogEntry>
 }
 
 
@@ -28,43 +34,33 @@ fn index() -> &'static str {
 }
 
 #[get("/palm")]
-fn get_soil_moisture() -> Template {
-    let conn = Connection::open(PATH).unwrap();
-    let mut statement = conn.prepare("SELECT * FROM palm_humidity limit 72").unwrap();
+fn get_soil_moisture(conn: PlantDbConn) -> Template {
 
-    let rows = statement
-        .query_map(NO_PARAMS, |row| MoistureEntry {
-            date_time: row.get(0),
-            humidity: row.get(1),
-        })
-        .unwrap();
-    
-    let mut palm_vec: Vec<MoistureEntry> = Vec::new();
-    for row in rows {
-        let entry = row.unwrap();
-        let moist_entry = MoistureEntry {
-            date_time: entry.date_time, 
-            humidity: entry.humidity,
-        };
-        palm_vec.push(moist_entry);    
-    }
+    let results = palm_log::table
+        .load::<PalmLogEntry>(&*conn)
+        .expect("Error loading posts");
 
-    let context = PalmContext { data: palm_vec};
-    Template::render("index", context)
+    Template::render("index", PalmContext { data: results })
 }
 
-#[get("/palm/<date_time>/<moisture>")]
-fn log_soil_moisture(date_time: String, moisture: u8) {
-    let conn = Connection::open(PATH).unwrap();
-    conn.execute(
-        "INSERT INTO palm_humidity VALUES (?1, ?2);",
-        &[&date_time, &moisture.to_string()],
-    ).unwrap();
+#[get("/palm/<moisture>")]
+fn log_soil_moisture(conn: PlantDbConn, moisture: i32) {
+
+    let new_entry = PalmLogEntry {
+        log_time: Utc::now().to_rfc3339(),
+        moisture: moisture
+    };
+
+    diesel::insert_into(palm_log::table)
+        .values(new_entry)
+        .execute(&*conn)
+        .expect("Error inserting into database");
 }
 
 fn main() {
     rocket::ignite()
         .mount("/", routes![index, get_soil_moisture, log_soil_moisture])
         .attach(Template::fairing())
+        .attach(PlantDbConn::fairing())
         .launch();
 }

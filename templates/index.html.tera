@@ -2,6 +2,6 @@
 
 {% block content %}
 {% for entry in data %}
-  {{entry.date_time}}: {{entry.humidity}} <br>
+  {{entry.log_time}}: {{entry.moisture}} <br>
 {% endfor %}
 {% endblock content %} 

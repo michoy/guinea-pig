@@ -12,7 +12,7 @@ use models::*;
 
 use rocket_contrib::templates::Template;
 use serde::Serialize;
-use chrono::prelude::Utc;
+use chrono::prelude::Local;
 
 pub mod schema;
 pub mod models;
@@ -47,7 +47,7 @@ fn get_soil_moisture(conn: PlantDbConn) -> Template {
 fn log_soil_moisture(conn: PlantDbConn, moisture: i32) {
 
     let new_entry = PalmLogEntry {
-        log_time: Utc::now().to_rfc3339(),
+        log_time: Local::now().to_rfc3339(),
         moisture: moisture
     };
 
@@ -56,6 +56,8 @@ fn log_soil_moisture(conn: PlantDbConn, moisture: i32) {
         .execute(&*conn)
         .expect("Error inserting into database");
 }
+
+
 
 fn main() {
     rocket::ignite()

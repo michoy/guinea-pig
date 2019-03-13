@@ -9,6 +9,7 @@ rocket = "0.4.0"
 serde = { version = "1.0", features = ["derive"] }
 chrono = "0.4"
 diesel = { version = "1.4.1", features = ["sqlite"] }
+rusqlite = { version = "0.16.0", features = ["bundled"]} # for sqlite3
 
 [dependencies.rocket_contrib]
 version = "*"

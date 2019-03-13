@@ -43,7 +43,7 @@ fn get_soil_moisture(conn: PlantDbConn) -> Template {
     Template::render("index", PalmContext { data: results })
 }
 
-#[get("/palm/<moisture>")]
+#[put("/palm/<moisture>")]
 fn log_soil_moisture(conn: PlantDbConn, moisture: i32) {
 
     let new_entry = PalmLogEntry {

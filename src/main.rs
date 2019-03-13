@@ -5,6 +5,7 @@
 #[macro_use] extern crate diesel;
 extern crate chrono;
 
+use rocket::request::Form;
 use rocket_contrib::databases::diesel::SqliteConnection;
 use rocket_contrib::json::Json;
 use diesel::prelude::*;
@@ -30,6 +31,11 @@ struct PalmContext {
 
 #[derive(Serialize)]
 struct PeerContext {}
+
+#[derive(FromForm)]
+struct Name {
+    name: String,
+}
 
 fn valid_name(name: &str) -> bool {
     match name {
@@ -88,8 +94,10 @@ fn get_standings(conn: DbConn) -> Json<Vec<Achievement>> {
     .expect("Error loading achievements from database"))
 }
 
-#[post("/peer", data = "<name>")]
-fn insert_achievement(conn: DbConn, name: String) {
+#[post("/peer", data = "<form>")]
+fn insert_achievement(conn: DbConn, form: Form<Name>) {
+
+    let name = &form.name;
 
     if !valid_name(&name) {
         println!("Cannot log achievement because the name is invalid");
@@ -97,7 +105,7 @@ fn insert_achievement(conn: DbConn, name: String) {
     }
 
     let new_achievement = Achievement {
-        name: name,
+        name: name.to_string(),
         date: Local::today().to_string()
     };
 

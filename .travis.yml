@@ -2,11 +2,11 @@ language: rust
 rust:
 - nightly
 before_script:
-- cargo install diesel_cli --no-default-features --features "sqlite-bundled"
-- echo DATABASE_URL=db.sqlite > .env
-- diesel migration run
+  - echo DATABASE_URL=db.sqlite > .env
+  - cargo install diesel_cli --no-default-features --features "sqlite-bundled" --force
+  - diesel migration run
 script:
-- cargo build --release --verbose
+- cargo build --release
 cache: cargo
 deploy:
   provider: heroku

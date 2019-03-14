@@ -1,6 +1,10 @@
 language: rust
 rust:
   - nightly
+before_script:
+  - cargo install diesel_cli --no-default-features --features "sqlite-bundled"
+  - echo DATABASE_URL=db.sqlite > .env
+  - diesel migration run
 script:
   - cargo build --release --verbose
 cache: cargo

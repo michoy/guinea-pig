@@ -1,10 +1,18 @@
 language: rust
 rust:
-  - nightly
+- nightly
 before_script:
-  - cargo install diesel_cli --no-default-features --features "sqlite-bundled"
-  - echo DATABASE_URL=db.sqlite > .env
-  - diesel migration run
+- cargo install diesel_cli --no-default-features --features "sqlite-bundled"
+- echo DATABASE_URL=db.sqlite > .env
+- diesel migration run
 script:
-  - cargo build --release --verbose
+- cargo build --release --verbose
 cache: cargo
+deploy:
+  provider: heroku
+  api_key:
+    secure: zkZ7RszaeBwpJQZ2cg6aemerU6vgeOFxfPH5Aq37wh7z1hwHR6UIIxcMnXs8aDsL8wNF19VMkI64LSoroTKJbegZ/tRik+3JssMPfrzbdAxx83QTHVa3xq7w1Pjy+SrQn07qd2Cth4dfL78NQX4CfTkU94624r5GyUDP0AY8sUF0VW+Utgiolb/XVfmRrX0GVMbZs71wlDg3phd3E0mz6TLnM9+LvEUHZ8Zg7BX2zxAg20cpNjnrpC+K6VfYsxplOGe0KGjjrf8+td7MSilcSqEerBma4vJ/109d4ic/Ohn/z8VCDiryjbQipLpuh/rlH2Wfe+kbDJ1AEZrQ3bs1BVD4F/7h7ZZF2bOw1mei3ICGVURyuuDxMAcNDmKXLZyF8qXuQp1ZCBAZSIK1yOzg6s2lezkmvG61mrB19mRvYIFrHvoZCRLNp+GFGzBi+F67vj89WYLNcWE0VARBdakfl7O7JKvY5282QtjSiZxoTYCTEtEwTtXzROV66JVv+zkGW9UcP5qdLiDZh9dyurw2kZNLIDZ7u5DPJ2k8d8wSwpoMyqz20tvM7mjfI+xVIGE6gLdnDrMDGKdJ7UDDQ/QpY1QxhN3Asj8brW6kUz7rdazMbXmst/ka3yIdJ1J42gt+C1aaa0vN/nMKkOXiAUbCRGH1W3S0lx9FDdTh/xesYKg=
+  app: guinea-pig
+  skip_cleanup: true
+  on:
+    repo: michoy/guinea-pig

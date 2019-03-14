@@ -7,12 +7,11 @@ edition = "2018"
 [dependencies]
 rocket = "0.4.0"
 serde = { version = "1.0", features = ["derive"] }
+chrono = "0.4"
+diesel = { version = "1.4.1", features = ["sqlite"] }
+rusqlite = { version = "0.16.0", features = ["bundled"]} # for sqlite3
 
 [dependencies.rocket_contrib]
-version = "0.4.0"
+version = "*"
 default-features = false
-features = ["tera_templates"]
-
-[dependencies.rusqlite]
-version = "0.16.0"
-features = ["bundled"]
+features = ["tera_templates", "diesel_sqlite_pool", "json"]

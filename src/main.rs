@@ -1,24 +1,49 @@
-#![feature(proc_macro_hygiene, decl_macro)]
+#![feature(proc_macro_hygiene, decl_macro, type_ascription)]
 
 #[macro_use] extern crate rocket;
-extern crate rusqlite;
+#[macro_use] extern crate rocket_contrib;
+#[macro_use] extern crate diesel;
+extern crate chrono;
+
+use rocket::request::Form;
+use rocket_contrib::databases::diesel::SqliteConnection;
+use rocket_contrib::json::Json;
+use diesel::prelude::*;
+use schema::*;
+use models::*;
 
 use rocket_contrib::templates::Template;
 use serde::Serialize;
-use rusqlite::{Connection, NO_PARAMS};
+use chrono::prelude::Local;
 
-const PATH: &str = "plant_data.db";
+pub mod schema;
+pub mod models;
+
+
+#[database("db")]
+struct DbConn(SqliteConnection);
 
 
 #[derive(Serialize)]
 struct PalmContext {
-    data: Vec<MoistureEntry>
+    data: Vec<models::PalmLogEntry>
 }
 
 #[derive(Serialize)]
-struct MoistureEntry {  
-    date_time: String,
-    humidity: u8  
+struct PeerContext {}
+
+#[derive(FromForm)]
+struct Name {
+    name: String,
+}
+
+fn valid_name(name: &str) -> bool {
+    match name {
+        "Carla" => true,
+        "Michael" => true,
+        "Lennart" => true,
+        _ => false,
+    }
 }
 
 
@@ -28,43 +53,87 @@ fn index() -> &'static str {
 }
 
 #[get("/palm")]
-fn get_soil_moisture() -> Template {
-    let conn = Connection::open(PATH).unwrap();
-    let mut statement = conn.prepare("SELECT * FROM palm_humidity limit 72").unwrap();
+fn get_palm_log(conn: DbConn) -> Template  {
 
-    let rows = statement
-        .query_map(NO_PARAMS, |row| MoistureEntry {
-            date_time: row.get(0),
-            humidity: row.get(1),
+    Template::render("index", PalmContext {
+        data: palm_log::table
+                .load::<PalmLogEntry>(&*conn)
+                .expect("Error loading palm_log from database")
         })
-        .unwrap();
-    
-    let mut palm_vec: Vec<MoistureEntry> = Vec::new();
-    for row in rows {
-        let entry = row.unwrap();
-        let moist_entry = MoistureEntry {
-            date_time: entry.date_time, 
-            humidity: entry.humidity,
-        };
-        palm_vec.push(moist_entry);    
+}
+
+#[put("/palm/<moisture>")]
+fn insert_palm_log_entry(conn: DbConn, moisture: i32) {
+
+    if moisture > 100 || moisture < 0 {
+        println!("Cannot log moisture because it is out of bounds");
+        return
     }
 
-    let context = PalmContext { data: palm_vec};
-    Template::render("index", context)
+    let new_entry = PalmLogEntry {
+        log_time: Local::now().to_rfc3339(),
+        moisture: moisture
+    };
+
+    diesel::insert_into(palm_log::table)
+        .values(new_entry)
+        .execute(&*conn)
+        .expect("Error inserting PalmLogEntry into database");
 }
 
-#[get("/palm/<date_time>/<moisture>")]
-fn log_soil_moisture(date_time: String, moisture: u8) {
-    let conn = Connection::open(PATH).unwrap();
-    conn.execute(
-        "INSERT INTO palm_humidity VALUES (?1, ?2);",
-        &[&date_time, &moisture.to_string()],
-    ).unwrap();
+#[get("/peer")]
+fn peer() -> Template {
+    Template::render("peer", PeerContext {})
 }
+
+#[get("/peer/standings")]
+fn get_standings(conn: DbConn) -> Json<Vec<Achievement>> {
+
+    Json(achievements::table
+    .load::<Achievement>(&*conn)
+    .expect("Error loading achievements from database"))
+}
+
+#[post("/peer", data = "<form>")]
+fn insert_achievement(conn: DbConn, form: Form<Name>) {
+
+    let name = &form.name;
+
+    if !valid_name(&name) {
+        println!("Cannot log achievement because the name is invalid");
+        return
+    }
+
+    let new_achievement = Achievement {
+        name: name.to_string(),
+        date: Local::today().to_string()
+    };
+
+    // Check that Achievement is not allready logged
+    let entries = achievements::table
+            .load::<Achievement>(&*conn)
+            .expect("Error loading achievements from database");
+    for achievement in &entries {
+        if achievement.name == new_achievement.name &&
+            achievement.date == new_achievement.date {
+                println!("Cannot log achievement because it is allready logged");
+                return
+            }
+    }
+
+    diesel::insert_into(achievements::table)
+        .values(new_achievement)
+        .execute(&*conn)
+        .expect("Error inserting new achievement into database");
+}
+
 
 fn main() {
     rocket::ignite()
-        .mount("/", routes![index, get_soil_moisture, log_soil_moisture])
+        .mount("/", routes![
+            index, get_palm_log, insert_palm_log_entry,
+            peer, get_standings, insert_achievement])
         .attach(Template::fairing())
+        .attach(DbConn::fairing())
         .launch();
 }

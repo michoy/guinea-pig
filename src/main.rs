@@ -15,6 +15,7 @@ use models::*;
 use rocket_contrib::templates::Template;
 use serde::Serialize;
 use chrono::prelude::Local;
+use std::collections::HashMap;
 
 pub mod schema;
 pub mod models;
@@ -86,12 +87,31 @@ fn peer() -> Template {
     Template::render("peer", PeerContext {})
 }
 
+// TODO: if possible, use group by in query
 #[get("/peer/standings")]
-fn get_standings(conn: DbConn) -> Json<Vec<Achievement>> {
+fn get_standings(conn: DbConn) -> Json<HashMap<String, i32>> {
+
+    let data = achievements::table
+    .load::<Achievement>(&*conn)
+    .expect("Error loading achievements from database");
+
+    let mut standings: HashMap<String, i32> = HashMap::new();
+
+    for achievement in data {
+        let count = standings.entry(achievement.date).or_insert(0);
+        *count += 1;
+    }
+
+    Json(standings)
+}
+
+#[get("/peer/standings/<date>")]
+fn get_standings_date(conn: DbConn, date: String) -> Json<Vec<Achievement>> {
 
     Json(achievements::table
+    .filter(achievements::date.eq(&date))
     .load::<Achievement>(&*conn)
-    .expect("Error loading achievements from database"))
+    .expect("Error getting results of date from db"))
 }
 
 #[post("/peer", data = "<form>")]
